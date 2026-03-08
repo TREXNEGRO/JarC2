@@ -1,9 +1,8 @@
 # TrustInJava C2
-
-Sistema de Command & Control (C2) con agente Java multiplataforma y panel web de control en tiempo real.
-
 **Autor:** TR3XN3GR0
-
+<p align="center">
+  <img src="https://media.giphy.com/media/jleNxE9BsJVO8/giphy.gif" width="350">
+</p>
 ---
 
 ## Requisitos
@@ -204,3 +203,4 @@ Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
 ---
 
 **TrustInJava C2 - TR3XN3GR0**
+
