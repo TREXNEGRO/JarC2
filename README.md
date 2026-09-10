@@ -202,5 +202,4 @@ Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
 
 ---
 
-**TrustInJava C2 - TR3XN3GR0**
 
