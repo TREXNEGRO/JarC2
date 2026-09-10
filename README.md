@@ -1,5 +1,5 @@
 # TrustInJava C2
-**Autor:** TR3XN3GR0
+
 <p align="center">
   <img src="https://media.giphy.com/media/jleNxE9BsJVO8/giphy.gif" width="350">
 </p>
